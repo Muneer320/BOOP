@@ -63,13 +63,16 @@ def create_title_page(pdf_file, words_json, background_image=None):
         pdf.cell(200, 10, txt=topic, ln=True, align="L")
 
         for mode, puzzles in modes.items():
+            puzzle_count = sum(len(p) for p in puzzles.values()) if mode == "Bonus" else len(puzzles)
+            if puzzle_count < 1:
+                continue
             pdf.cell(10)
             pdf.set_font("Arial", "B", 12)
             pdf.cell(20, 8, txt=f"{mode}:", ln=False)
             pdf.set_font("Arial", "", 12)
 
             if mode == "Bonus":
-                for i in range(len(puzzles)):
+                for i in range(puzzle_count):
                     x_pos = pdf.get_x() + 12 * i
                     y_pos = pdf.get_y() + 5
                     pdf.text(x_pos, y_pos, "O")
@@ -77,7 +80,7 @@ def create_title_page(pdf_file, words_json, background_image=None):
 
                 pdf.cell(25)
                 pdf.set_font("Arial", "", 7)
-                for i in range(len(puzzles)):
+                for i in range(puzzle_count):
                     pdf.cell(12, 6, txt=str(i + 1), align="C")
                 pdf.set_font("Arial", "", 12)
                 pdf.ln(10)

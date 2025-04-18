@@ -3,7 +3,7 @@ import json
 import random
 
 
-def word_to_json(file_path="Words/words.txt"):
+def word_to_json(file_path="Words/words.txt", num_normal=10, num_hard=5, bonus_normal=1, bonus_hard=1):
     def filter_words(words, min_len, max_len):
         return [word for word in words if min_len <= len(word) <= max_len]
 
@@ -14,9 +14,12 @@ def word_to_json(file_path="Words/words.txt"):
         data = file.read()
 
 
+    # Words per puzzle for each mode
+    normal_w_count = 10
+    hard_w_count = 15
+
     sections = data.split('====================')
     result = {}
-    warnings = []
 
     for section in sections:
         if section.strip():
@@ -24,55 +27,61 @@ def word_to_json(file_path="Words/words.txt"):
             topic = lines[0].strip('>').strip()
             words = [word.strip() for word in lines[1:] if word.strip()]
 
-            normal_words = filter_words(words, 4, 11)
-            hard_words = filter_words(words, 6, 15)
+            # Prepare pools and ensure enough words
+            normal_pool = filter_words(words, 4, 11)
+            hard_pool = filter_words(words, 6, 15)
 
-            topic_result = {"Normal": [], "Hard": [], "Bonus": {}}
+            # Required totals
+            total_normal_needed = num_normal * normal_w_count
+            total_hard_needed = num_hard * hard_w_count
+            total_bonus_norm_needed = bonus_normal * normal_w_count
+            total_bonus_hard_needed = bonus_hard * hard_w_count
+            # Check availability
+            if len(normal_pool) < total_normal_needed + total_bonus_norm_needed:
+                raise ValueError(f"Topic '{topic}' needs {total_normal_needed + total_bonus_norm_needed} normal words, found {len(normal_pool)}")
+            if len(hard_pool) < total_hard_needed + total_bonus_hard_needed:
+                raise ValueError(f"Topic '{topic}' needs {total_hard_needed + total_bonus_hard_needed} hard words, found {len(hard_pool)}")
 
-            # Generate lists for Normal mode
-            for i in range(10):
-                if len(normal_words) >= 10:
-                    topic_result["Normal"].append(
-                        random.sample(normal_words, 10))
-                else:
-                    topic_result["Normal"].append(normal_words[:])
-                    warnings.append(f"Topic '{topic}' Normal mode, Puzzle number {
-                                    i+1} is lacking {10 - len(normal_words)} words.")
-
-            # Generate lists for Hard mode
-            for i in range(5):
-                if len(hard_words) >= 15:
-                    topic_result["Hard"].append(random.sample(hard_words, 15))
-                else:
-                    topic_result["Hard"].append(hard_words[:])
-                    warnings.append(f"Topic '{topic}' Hard mode, Puzzle number {
-                                    i+1} is lacking {15 - len(hard_words)} words.")
-
-            # Generate lists for Bonus mode
-            if len(normal_words) >= 10:
-                topic_result["Bonus"]["Normal"] = [
-                    random.sample(normal_words, 10)]
-            else:
-                topic_result["Bonus"]["Normal"] = [normal_words[:]]
-                warnings.append(f"Topic '{topic}' Bonus Normal mode is lacking {
-                                10 - len(normal_words)} words.")
-
-            if len(hard_words) >= 15:
-                topic_result["Bonus"]["Hard"] = [random.sample(hard_words, 15)]
-            else:
-                topic_result["Bonus"]["Hard"] = [hard_words[:]]
-                warnings.append(f"Topic '{topic}' Bonus Hard mode is lacking {
-                                15 - len(hard_words)} words.")
-
+            topic_result = {"Normal": [], "Hard": [], "Bonus": {"Normal": [], "Hard": []}}
+            # Sample unique words
+            # Normal puzzles
+            for _ in range(num_normal):
+                sample = random.sample(normal_pool, normal_w_count)
+                topic_result["Normal"].append(sample)
+                for w in sample:
+                    if w in normal_pool: normal_pool.remove(w)
+                    #if w in hard_pool: hard_pool.remove(w)
+            
+            # Hard puzzles
+            for _ in range(num_hard):
+                sample = random.sample(hard_pool, hard_w_count)
+                topic_result["Hard"].append(sample)
+                for w in sample:
+                    if w in hard_pool: hard_pool.remove(w)
+                    #if w in normal_pool: normal_pool.remove(w)
+            
+            # Bonus Normal puzzles
+            for _ in range(bonus_normal):
+                sample = random.sample(normal_pool, normal_w_count)
+                topic_result["Bonus"]["Normal"].append(sample)
+                for w in sample:
+                    normal_pool.remove(w)
+                    #if w in hard_pool: hard_pool.remove(w)
+            
+            # Bonus Hard puzzles
+            for _ in range(bonus_hard):
+                sample = random.sample(hard_pool, hard_w_count)
+                topic_result["Bonus"]["Hard"].append(sample)
+                for w in sample:
+                    hard_pool.remove(w)
+                    #if w in normal_pool: normal_pool.remove(w)
+            
             result[topic] = topic_result
 
-    if warnings:
-        print("\nWarnings:")
-        print("\n".join(warnings))
-
+    # Write JSON
     with open("Words/words.json", "w") as f:
         json.dump(result, f, indent=4)
 
 
 if __name__ == '__main__':
-    word_to_json("Words/words.txt")
+    word_to_json("Words/words.txt", num_normal=10, num_hard=5, bonus_normal=1, bonus_hard=1)

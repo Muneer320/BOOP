@@ -1,6 +1,7 @@
 from appendImage import append_page, append_puzzle_page
 from index import create_title_page
 from generatePuzzle import create_all_puzzles, create_individual_puzzle
+import os
 from Words.rawWordToJSON import word_to_json
 
 # Global book_name
@@ -30,7 +31,12 @@ def main():
         return
 
 
+    print("Converting raw words to JSON.\n")
+    word_to_json(file_path="Words/words.txt", output_path=word_json_path)
+
     if start_puzzle == 1:
+        if os.path.exists(f"{book_name}.pdf"):
+            os.remove(f"{book_name}.pdf")
         print("Adding cover image.\n")
         append_page(book_name, image_path)
 
@@ -38,17 +44,16 @@ def main():
         create_title_page(book_name, word_json_path,
                           background_image=background_image)
 
-    print("Converting raw words to JSON.\n")
-    word_to_json(file_path="Words/words.txt")
-
     print("\nGenerating puzzles and adding to the book.")
-    fail_count = create_all_puzzles(
+    failures = create_all_puzzles(
         word_json_path, puzzle_background_image, puzzle_folder, start_puzzle)
 
-    if fail_count:
-        print(f"Failed to create {fail_count} puzzle(s).")
-        create_individual_puzzle(
-            fail_count, word_json_path, puzzle_folder, background_image=puzzle_background_image)
+    if failures:
+        print(f"Retrying {len(failures)} failed puzzle(s).")
+        unresolved = create_individual_puzzle(
+            failures, puzzle_folder, background_image=puzzle_background_image)
+        if unresolved:
+            raise RuntimeError(f"Could not generate {len(unresolved)} puzzle(s); book was not completed")
 
     print("All puzzles are made. Adding to the book...")
 

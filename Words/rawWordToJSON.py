@@ -3,7 +3,7 @@ import json
 import random
 
 
-def word_to_json(file_path="Words/words.txt", num_normal=10, num_hard=5, bonus_normal=1, bonus_hard=1):
+def word_to_json(file_path="Words/words.txt", output_path="Words/words.json", num_normal=10, num_hard=5, bonus_normal=1, bonus_hard=1):
     def filter_words(words, min_len, max_len):
         return [word for word in words if min_len <= len(word) <= max_len]
 
@@ -79,7 +79,8 @@ def word_to_json(file_path="Words/words.txt", num_normal=10, num_hard=5, bonus_n
             result[topic] = topic_result
 
     # Write JSON
-    with open("Words/words.json", "w") as f:
+    os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
+    with open(output_path, "w") as f:
         json.dump(result, f, indent=4)
 
 

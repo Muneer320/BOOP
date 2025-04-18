@@ -1,5 +1,8 @@
 *.pptx
-*.cpython
-*.pyc
-test*
-_*
+*.py[cod]
+__pycache__/
+generated_puzzles/
+Words/words.json
+*.pdf
+temp*.pdf
+new_*.pdf

@@ -1,59 +1,36 @@
-# BOOP – Book Of Organized Puzzles
+# BOOP — Book Of Organized Puzzles
 
-Welcome to **BOOP**, a fully automated solution to generate your personalized puzzle book. From title pages to solution pages, everything is crafted seamlessly. Just provide the words, and it’ll do the magic!
+> **Archived CLI project.** [BOOP-web](https://github.com/Muneer320/BOOP-web) is the maintained version.
 
-## 🔧 Features
-- Automatically generates a full-fledged puzzle book (PDF format).
-- Includes:
-  - **Title Page**
-  - **Index Page**
-  - **Puzzle Pages** (unique identifiers for each page).
-  - **Solution Pages**.
-- Puzzles are categorized **Topic-wise** and further divided into:
-  - **Normal Mode**: 10 puzzles.
-  - **Hard Mode**: 5 puzzles.
-  - **Bonus Mode**: 2 puzzles.
+BOOP generates a PDF book of word-search puzzles from a topic-organized word list. This repository preserves the original command-line implementation. It is archived because the web version now carries the active development.
 
-## 🗂 Project Structure
-```plaintext
-Assets/              # Includes backgrounds, title page templates, etc.
-  ├── Cover.png            # Cover image
-  ├── pageBackground.png   # Page background image
-Words/               # Folder for word input and processing
-  ├── rawWordToJSON.py     # Converts words.txt to JSON
-  ├── words.json           # Processed JSON of words
-  ├── words.txt            # Input file (your word list, atleast 200 words per topic)
-appendImage.py       # Handles adding images to pages
-generatePuzzle.py    # Core puzzle generation logic
-index.py             # Creates the index page
-main.py              # The main driver script
-README.md            # Documentation
+## Run the CLI
+
+Python 3.12 or newer is required. From the repository root:
+
+```bash
+python -m pip install -r requirements.txt
+python main.py
 ```
 
-## 🚀 Getting Started
-1. Place your word list in `Words/words.txt` (200 words per topic).
-2. Run the script:
-   ```bash
-   python main.py
-   ```
-3. Voilà! Your puzzle book is ready in PDF format.
+The interactive command reads `Words/words.txt`, generates `Words/words.json`, and writes `Where's Word-o.pdf` and puzzle SVGs in `generated_puzzles/`. Starting from puzzle 1 replaces an existing book with the same name. A later starting number appends to that book.
 
-## 📖 How It Works
-1. The word list is processed into categorized JSON using `rawWordToJSON.py`.
-2. Puzzles are generated with specific rules for Normal, Hard, and Bonus modes.
-3. Pages are styled and compiled into a professionally designed book format.
+For command-line options, run `python main_arg.py --help`. For example:
 
-## 📖 Puzzle Types
-- **Normal Puzzle**: A 13x13 word search.
-- **Hard Puzzle**: A 17x17 word search with more complexity.
-- **Bonus Puzzle**: Special patterns and challenges.
+```bash
+python main_arg.py --name MyBook --words-file Words/words.txt --json-file output/words.json --output output/puzzles
+```
 
-## ❓ FAQ
-### What happens if I don’t provide enough words?
-The program will still generate puzzles but will warn you about missing words.
+`main_arg.py` replaces an existing PDF with the same name. The default counts per topic are 10 Normal, 5 Hard, 1 Bonus Normal and 1 Bonus Hard puzzle. Normal grids are 13×13; Hard grids are 17×17. Each Normal puzzle needs 10 words of 4–11 characters; each Hard puzzle needs 15 words of 6–15 characters. With the default counts, a topic needs at least 110 Normal-eligible and 90 Hard-eligible words. A word may qualify for both pools.
 
-### Can I add more topics?
-Absolutely! Just add your words in the `Words/words.txt` and rerun the `main.py` script.
+If a topic lacks enough words, generation stops with an error. A puzzle that cannot be placed is retried; if it still fails, the book is left incomplete and the command reports failure.
 
-## 🧑‍💻 Contributions
-Feel free to fork this repository and make a pull request.
+## Input format
+
+`Words/words.txt` contains a topic line beginning with `>`, followed by one word or phrase per line. Separate topics with a line of 20 equals signs (`====================`). See the bundled input for an example.
+
+## History and credit
+
+This is the original Python CLI that preceded BOOP-web. Its word-placement routine was adapted from Christian Hill's [Making a word search puzzle in Python](https://scipython.com/blog/making-a-word-search-puzzle-in-python/). The PDF assembly, topic handling and book layout were developed for BOOP.
+
+The legacy PDF dependencies remain pinned for reproducibility. Topic names outside Latin-1 may fail in the title page. Use BOOP-web for current development and support.

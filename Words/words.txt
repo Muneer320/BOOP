@@ -203,7 +203,7 @@ Showjump
 
 
 ====================
-> ASTROMONY
+> ASTRONOMY
 
 Parallax
 Penumbra

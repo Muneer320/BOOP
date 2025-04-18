@@ -46,7 +46,7 @@ def main():
     # Generate JSON from raw words
     print("Converting raw words to JSON...\n")
     try:
-        word_to_json(file_path=word_file,
+        word_to_json(file_path=word_file, output_path=word_json,
                      num_normal=args.normal,
                      num_hard=args.hard,
                      bonus_normal=args.bonus_normal,
@@ -72,8 +72,11 @@ def main():
 
     # Handle failed puzzles
     if fails:
-        print(f"Failed to generate {len(fails)} puzzle(s). Generating individually...\n")
-        create_individual_puzzle(fails, word_json, puzzle_folder, background_image=puzzle_background_image)
+        print(f"Retrying {len(fails)} failed puzzle(s)...\n")
+        unresolved = create_individual_puzzle(fails, puzzle_folder, background_image=puzzle_background_image)
+        if unresolved:
+            print(f"Could not generate {len(unresolved)} puzzle(s); book was not completed.")
+            return 1
 
     # Append puzzles and solutions to the book
     print("Appending puzzles and solutions to the book...\n")

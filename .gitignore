@@ -1,5 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment
+.venv/
+
+# Build artifacts
+wordgrid_solver/target/
+wordgrid_solver/wheels/
+
+# Output files
+output/
+*.pdf
+*.svg
+
 *.pptx
 *.cpython
-*.pyc
 test*
 _*

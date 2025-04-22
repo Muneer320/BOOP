@@ -1,0 +1,14 @@
+/workspaces/BOOP/wordgrid_solver/wordgrid_solver/target/release/deps/libpyo3_build_config-c1ce7b9181eabe04.rmeta: /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pyo3-build-config-0.22.6/src/lib.rs /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pyo3-build-config-0.22.6/src/errors.rs /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pyo3-build-config-0.22.6/src/impl_.rs /workspaces/BOOP/wordgrid_solver/wordgrid_solver/target/release/build/pyo3-build-config-64fce69c8405aa1f/out/pyo3-build-config-file.txt /workspaces/BOOP/wordgrid_solver/wordgrid_solver/target/release/build/pyo3-build-config-64fce69c8405aa1f/out/pyo3-build-config.txt
+
+/workspaces/BOOP/wordgrid_solver/wordgrid_solver/target/release/deps/libpyo3_build_config-c1ce7b9181eabe04.rlib: /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pyo3-build-config-0.22.6/src/lib.rs /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pyo3-build-config-0.22.6/src/errors.rs /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pyo3-build-config-0.22.6/src/impl_.rs /workspaces/BOOP/wordgrid_solver/wordgrid_solver/target/release/build/pyo3-build-config-64fce69c8405aa1f/out/pyo3-build-config-file.txt /workspaces/BOOP/wordgrid_solver/wordgrid_solver/target/release/build/pyo3-build-config-64fce69c8405aa1f/out/pyo3-build-config.txt
+
+/workspaces/BOOP/wordgrid_solver/wordgrid_solver/target/release/deps/pyo3_build_config-c1ce7b9181eabe04.d: /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pyo3-build-config-0.22.6/src/lib.rs /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pyo3-build-config-0.22.6/src/errors.rs /home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pyo3-build-config-0.22.6/src/impl_.rs /workspaces/BOOP/wordgrid_solver/wordgrid_solver/target/release/build/pyo3-build-config-64fce69c8405aa1f/out/pyo3-build-config-file.txt /workspaces/BOOP/wordgrid_solver/wordgrid_solver/target/release/build/pyo3-build-config-64fce69c8405aa1f/out/pyo3-build-config.txt
+
+/home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pyo3-build-config-0.22.6/src/lib.rs:
+/home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pyo3-build-config-0.22.6/src/errors.rs:
+/home/codespace/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pyo3-build-config-0.22.6/src/impl_.rs:
+/workspaces/BOOP/wordgrid_solver/wordgrid_solver/target/release/build/pyo3-build-config-64fce69c8405aa1f/out/pyo3-build-config-file.txt:
+/workspaces/BOOP/wordgrid_solver/wordgrid_solver/target/release/build/pyo3-build-config-64fce69c8405aa1f/out/pyo3-build-config.txt:
+
+# env-dep:CARGO_PKG_VERSION=0.22.6
+# env-dep:OUT_DIR=/workspaces/BOOP/wordgrid_solver/wordgrid_solver/target/release/build/pyo3-build-config-64fce69c8405aa1f/out

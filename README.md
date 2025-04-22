@@ -31,17 +31,60 @@ README.md            # Documentation
 ```
 
 ## 🚀 Getting Started
-1. Place your word list in `Words/words.txt` (200 words per topic).
-2. Run the script:
-   ```bash
-   python main.py
-   ```
-3. Voilà! Your puzzle book is ready in PDF format.
+
+### Prerequisites
+
+*   Python 3.8+
+*   Rust toolchain (including `cargo`)
+*   `maturin` (can be installed via pip)
+
+### Building and Running
+
+1.  **Clone the repository:**
+    ```bash
+    git clone <repository-url>
+    cd BOOP
+    ```
+
+2.  **Create and activate a Python virtual environment:**
+    ```bash
+    python -m venv .venv
+    source .venv/bin/activate  # On Windows use `.venv\Scripts\activate`
+    ```
+
+3.  **Install Python dependencies:**
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+4.  **Build the Rust extension:**
+    Navigate to the Rust project directory and build the extension using Maturin. This compiles the Rust code and makes it available to your Python environment.
+    ```bash
+    cd wordgrid_solver/wordgrid_solver
+    maturin develop
+    cd ../..  # Return to the root directory
+    ```
+
+5.  **Run the FastAPI server:**
+    ```bash
+    python -m uvicorn api:app --host 0.0.0.0 --port 8000 --reload
+    ```
+    The API will be available at `http://localhost:8000`.
+
+6.  **(Optional) Generate a standalone puzzle book PDF (Original CLI functionality):**
+    *   Place your word list in `Words/words.txt` (ensure sufficient words per topic as per original instructions).
+    *   Run the script:
+        ```bash
+        python main_arg.py  # Assuming main_arg.py is the entry point for PDF generation
+        ```
+    *   Your puzzle book PDF will be generated.
 
 ## 📖 How It Works
-1. The word list is processed into categorized JSON using `rawWordToJSON.py`.
-2. Puzzles are generated with specific rules for Normal, Hard, and Bonus modes.
-3. Pages are styled and compiled into a professionally designed book format.
+
+*   **API (`api.py`)**: Provides endpoints (`/generate`, `/status/{job_id}`) to request puzzle generation and check job status. Uses background tasks for non-blocking generation.
+*   **Rust Extension (`wordgrid_solver`)**: Handles the computationally intensive task of finding word placements in the grid, optimized for performance.
+*   **Puzzle Generation (`generatePuzzle.py`)**: Orchestrates the puzzle creation using the Rust solver and generates SVG output.
+*   **PDF Generation (`main_arg.py`, `index.py`, `appendImage.py`)**: Contains the original logic for creating a complete PDF book (if using the CLI approach).
 
 ## 📖 Puzzle Types
 - **Normal Puzzle**: A 13x13 word search.

@@ -7,3 +7,6 @@ fastapi==0.104.1
 uvicorn==0.23.2
 python-multipart==0.0.6
 svgwrite==1.4.3
+pytest
+httpx
+pytest-asyncio

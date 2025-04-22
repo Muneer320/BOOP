@@ -7,9 +7,14 @@ import uuid
 import os
 import json
 import shutil
+import asyncio
+from concurrent.futures import ProcessPoolExecutor
 
 from generatePuzzle import create_puzzle_and_solution
 from index import create_title_page
+
+# Create a process pool executor (adjust max_workers as needed)
+process_pool = ProcessPoolExecutor(max_workers=os.cpu_count() or 1)
 
 app = FastAPI()
 
@@ -41,38 +46,56 @@ class JobResponse(BaseModel):
     job_id: str
     status: str
 
+def run_generation_in_process(job_folder: str, params: Dict):
+    """Helper function to run the CPU-bound task in the process pool."""
+    puzzle_filename = f"{job_folder}/puzzle"
+    wordlist = params["wordlist"]
+    size = params["size"]
+    mask_type = params["mask_type"]
+
+    # This function will run in a separate process
+    create_puzzle_and_solution(
+        puzzle_filename,
+        wordlist,
+        size,
+        size,
+        mask_type=mask_type,
+        background_image=None,
+        page_number=None
+    )
+    # Return necessary info for status update
+    # Extract job_id from job_folder path for the URLs
+    job_id = os.path.basename(job_folder)
+    return {
+        "puzzle_url": f"/output/puzzles/{job_id}/puzzle.svg",
+        "solution_url": f"/output/puzzles/{job_id}/puzzleS.svg"
+    }
+
 async def generate_puzzle_task(job_id: str, params: Dict):
     job_folder = f"output/puzzles/{job_id}"
     os.makedirs(job_folder, exist_ok=True)
+    loop = asyncio.get_running_loop()
 
     try:
         puzzle_jobs[job_id]["status"] = "processing"
 
-        #generation function call
-        puzzle_filename = f"{job_folder}/puzzle"
-        wordlist = params["wordlist"]
-        size = params["size"]
-        mask_type = params["mask_type"]
-
-        create_puzzle_and_solution(
-            puzzle_filename,
-            wordlist,
-            size,
-            size,
-            mask_type=mask_type,
-            background_image=None,
-            page_number=None
+        # Run the CPU-bound task in the process pool executor
+        result = await loop.run_in_executor(
+            process_pool, 
+            run_generation_in_process, # Target function (now synchronous)
+            job_folder, 
+            params
         )
 
         puzzle_jobs[job_id]["status"] = "completed"
-        puzzle_jobs[job_id]["result"] = {
-            "puzzle_url": f"/output/puzzles/{job_id}/puzzle.svg",
-            "solution_url": f"/output/puzzles/{job_id}/puzzleS.svg"
-        }
+        puzzle_jobs[job_id]["result"] = result
         
     except Exception as e:
+        print(f"Error processing job {job_id}: {e}") # Log the error
         puzzle_jobs[job_id]["status"] = "failed"
         puzzle_jobs[job_id]["error"] = str(e)
+    finally:
+        pass
 
 @app.post("/generate", response_model=JobResponse)
 async def generate_puzzle(request: PuzzleRequest, background_tasks: BackgroundTasks):

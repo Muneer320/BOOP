@@ -112,10 +112,13 @@ async def run_benchmark(num_concurrent: int):
     print("-------------------------")
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Benchmark FastAPI puzzle generation API.")
-    parser.add_argument("-n", "--num", type=int, default=max(1, os.cpu_count() or 1),
+async def main():
+    parser = argparse.ArgumentParser(description="Run API benchmark.")
+    parser.add_argument("-n", "--num-concurrent", type=int, default=4, # Changed default to 4
                         help="Number of concurrent requests to send.")
     args = parser.parse_args()
 
-    asyncio.run(run_benchmark(args.num))
+    await run_benchmark(args.num_concurrent)
+
+if __name__ == "__main__":
+    asyncio.run(main())

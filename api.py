@@ -7,6 +7,7 @@ import uuid
 import os
 import json
 import shutil
+import asyncio
 
 from generatePuzzle import create_puzzle_and_solution
 from index import create_title_page
@@ -54,14 +55,17 @@ async def generate_puzzle_task(job_id: str, params: Dict):
         size = params["size"]
         mask_type = params["mask_type"]
 
-        create_puzzle_and_solution(
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(
+            None,
+            create_puzzle_and_solution,
             puzzle_filename,
             wordlist,
             size,
             size,
-            mask_type=mask_type,
-            background_image=None,
-            page_number=None
+            mask_type,
+            None,  # background_image
+            None   # page_number
         )
 
         puzzle_jobs[job_id]["status"] = "completed"

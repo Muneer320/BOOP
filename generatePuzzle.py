@@ -7,6 +7,9 @@ from svgwrite.container import Group
 import json
 from math import sqrt
 
+# Import the Rust solver
+import wordgrid_solver
+
 # Constants
 NMAX = 32
 ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
@@ -51,427 +54,21 @@ def create_grid(nrows, ncols, mask_type=None):
     return grid
 
 
-def _generate_wordsearch(nrows, ncols, wordlist, allow_backwards_words=True, mask=None):
-    """Attempt to make a word search with the given parameters."""
-
-    grid = create_grid(nrows, ncols, mask)
-    wordPositions = {}
-
-    def fill_grid_randomly(grid):
-        """Fill up the empty, unmasked positions with random letters."""
-        for irow in range(nrows):
-            for icol in range(ncols):
-                if grid[irow][icol] == ' ':
-                    grid[irow][icol] = random.choice(ALPHABET)
-
-    def remove_mask(grid):
-        """Remove the mask, for text output, by replacing with whitespace."""
-        for irow in range(nrows):
-            for icol in range(ncols):
-                if grid[irow][icol] == '*':
-                    grid[irow][icol] = ' '
-
-    def test_candidate(irow, icol, dx, dy, word):
-        """Test the candidate location (icol, irow) for word in orientation (dx, dy)."""
-        for j in range(len(word)):
-            if grid[irow][icol] not in (' ', word[j]):
-                return False
-            irow += dy
-            icol += dx
-        return True
-
-    def place_word(word):
-        """Place word randomly in the grid and return True, if possible."""
-
-        # Left, down, and the diagonals.
-        dxdy_choices = [(0, 1), (1, 0), (1, 1), (1, -1)]
-        random.shuffle(dxdy_choices)
-        for (dx, dy) in dxdy_choices:
-            if allow_backwards_words and random.choice([True, False]):
-                # If backwards words are allowed, simply reverse word.
-                word = word[::-1]
-
-            n = len(word)
-            colmin = 0
-            colmax = ncols - n if dx else ncols - 1
-            rowmin = 0 if dy >= 0 else n - 1
-            rowmax = nrows - n if dy >= 0 else nrows - 1
-
-            if colmax - colmin < 0 or rowmax - rowmin < 0:
-                # No possible place for the word in this orientation.
-                continue
-
-            # Build a list of candidate locations for the word.
-            candidates = []
-            for irow in range(rowmin, rowmax+1):
-                for icol in range(colmin, colmax+1):
-                    if test_candidate(irow, icol, dx, dy, word):
-                        candidates.append((irow, icol))
-
-            # If we don't have any candidates, try the next orientation.
-            if not candidates:
-                continue
-
-            # Pick a random candidate location and place the word in this orientation.
-            loc = irow, icol = random.choice(candidates)
-            for j in range(n):
-                grid[irow][icol] = word[j]
-                irow += dy
-                icol += dx
-
-            wordPositions[word] = (loc[1], loc[0], icol-dx, irow-dy)
-            # We're done: no need to try any more orientations.
-            break
-        else:
-            # If we're here, it's because we tried all orientations but
-            # couldn't find anywhere to place the word. Oh dear.
-            return False
-        return True
-
-    # Iterate over the word list and try to place each word (without spaces).
-    for word in wordlist:
-        word = word.replace(' ', '')
-        if not place_word(word):
-            # We failed to place word, so bail.
-            return None, None
-
-    fill_grid_randomly(grid)
-    remove_mask(grid)
-
-    return grid, wordPositions
-
-
-def generate_wordsearch(*args, **kwargs):
-    """Make a word search, attempting to fit words into the specified grid."""
-
-    # We try NATTEMPTS times (with random orientations) before giving up.
-    NATTEMPTS = 50
-    for i in range(NATTEMPTS):
-        grid, solution = _generate_wordsearch(*args, **kwargs)
-        if grid:
-            print(f'Fitted the words in {i+1} attempt(s)')
-            return grid, solution
-
-    return None, None
-
-
 def display_grid_text(grid):
     """Displays grid as text."""
     for row in grid:
         print(" ".join(row))
 
 
-'''
-def create_puzzle_image(filename, grid, wordlist, mask_type=None, page_number=None, background_image=None):
-    """
-    This function generates a puzzle page with a grid of letters, an optional circle mask around the grid, 
-    a list of hidden words, and a page number. Optionally, a background image can be added. The output 
-    is saved as a PNG file.
-    """
-    page_width, page_height = 2480, 3508  # A4 size in pixels at 300 DPI
-    margin = 200  # Left and right margin
-    grid_outline_width = 10
-    font_path = "arial.ttf"
-    grid_font_size = 40
-    title_font_size = 50
-    words_font_size = 40
-    page_number_font_size = 40
-    vertical_gap = 150  # Gap between grid and word list
-
-    if ".png" not in filename:
-        filename += ".png"
-
-    # Load background or create a blank white page
-    if background_image:
-        page = Image.open(background_image).convert(
-            "RGB").resize((page_width, page_height))
-    else:
-        page = Image.new("RGB", (page_width, page_height), "white")
-    draw = ImageDraw.Draw(page)
-
-    # Load fonts
-    try:
-        grid_font = ImageFont.truetype(font_path, grid_font_size)
-        title_font = ImageFont.truetype(font_path, title_font_size)
-        words_font = ImageFont.truetype(font_path, words_font_size)
-        page_number_font = ImageFont.truetype(font_path, page_number_font_size)
-    except IOError:
-        raise RuntimeError(
-            "Font file not found. Update the font_path variable.")
-
-    # Grid size and cell calculation
-    grid_size = len(grid)
-    cell_size = min((page_width - 2 * margin) // grid_size,
-                    (page_height // 2) // grid_size)
-    grid_width = grid_size * cell_size
-    grid_height = grid_size * cell_size
-
-    # Word list dimensions
-    words_per_column = (len(wordlist) + 2) // 3
-    # Approximate height of word list and title
-    word_list_height = words_per_column * 50 + 100
-
-    # Total height for grid + gap + word list
-    combined_height = grid_height + vertical_gap + word_list_height
-    vertical_offset = (page_height - combined_height) // 2
-
-    # Positioning of grid
-    grid_start_x = (page_width - grid_width) // 2
-    grid_start_y = vertical_offset
-
-    if mask_type == "circle":
-        # Draw circle around the grid with increased radius
-        center_x = grid_start_x + grid_width // 2
-        center_y = grid_start_y + grid_height // 2
-        radius = max(grid_width, grid_height) // 2 + \
-            50  # Increased radius for more space
-        draw.ellipse(
-            [center_x - radius, center_y - radius,
-                center_x + radius, center_y + radius],
-            outline="red", width=grid_outline_width
-        )
-
-        # Draw letters inside the circle
-        for row in range(grid_size):
-            for col in range(grid_size):
-                cell_x = grid_start_x + col * cell_size + cell_size // 2
-                cell_y = grid_start_y + row * cell_size + cell_size // 2
-                draw.text((cell_x, cell_y), grid[row][col].upper(
-                ), fill="black", font=grid_font, anchor="mm")
-    else:
-        # Draw grid with lines for square mask
-        for row in range(grid_size):
-            for col in range(grid_size):
-                cell_x = grid_start_x + col * cell_size
-                cell_y = grid_start_y + row * cell_size
-                draw.rectangle([cell_x, cell_y, cell_x + cell_size,
-                               cell_y + cell_size], outline="black")
-                char_x = cell_x + cell_size // 2
-                char_y = cell_y + cell_size // 2
-                draw.text((char_x, char_y), grid[row][col].upper(
-                ), fill="black", font=grid_font, anchor="mm")
-
-        # Draw grid outline
-        draw.rectangle(
-            [grid_start_x - grid_outline_width, grid_start_y - grid_outline_width,
-             grid_start_x + grid_width + grid_outline_width, grid_start_y + grid_height + grid_outline_width],
-            outline="red", width=grid_outline_width
-        )
-
-    # Add "Hidden Words" title
-    title_y = grid_start_y + grid_height + vertical_gap
-    draw.text((page_width // 2, title_y), "HIDDEN WORDS",
-              fill="black", font=title_font, anchor="mm")
-
-    # Add word list
-    words_y = title_y + 100
-    column_width = (page_width - 2 * margin) // 3
-    for i, word in enumerate(sorted(wordlist)):
-        col = i % 3
-        row = i // 3
-        word_x = margin + col * column_width + column_width // 2
-        word_y = words_y + row * 50
-        draw.text((word_x, word_y), word.upper(),
-                  fill="black", font=words_font, anchor="mm")
-
-    # Add page number
-    if page_number is not None:
-        draw.text((page_width // 2, page_height - 100), str(page_number),
-                  fill="black", font=page_number_font, anchor="mm")
-
-    # Save the output
-    page.save(filename)
-
-
-def create_solution_image(filename, grid, word_positions, mask_type=None):
-    """
-    Generates a solution image with highlighted words in a transparent image,
-    with distinct colors for overlapping words.
-    """
-    grid_size = len(grid)
-    cell_size = 40
-    padding = 20
-    width = grid_size * cell_size + 2 * padding
-    height = grid_size * cell_size + 2 * padding
-
-    if ".png" not in filename:
-        filename += ".png"
-
-    # Create a transparent image
-    solution_image = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(solution_image)
-
-    # Load a font for the grid letters
-    try:
-        font = ImageFont.truetype("arial.ttf", 24)
-    except IOError:
-        raise RuntimeError("Font file not found. Update the font path.")
-
-    # Function to draw the grid
-    def draw_grid():
-        start_x = padding
-        start_y = padding
-        for y in range(grid_size):
-            for x in range(grid_size):
-                char = grid[y][x]
-                # Draw the character centered in each cell
-                draw.text(
-                    (start_x + x * cell_size + cell_size // 2,
-                     start_y + y * cell_size + cell_size // 2),
-                    char.upper(), fill="black", font=font, anchor="mm"
-                )
-
-    # Function to highlight words with unique colors
-    def highlight_word(word, start_x, start_y, end_x, end_y, color):
-        for i in range(len(word)):
-            # Calculate position for each character based on the direction
-            x_pos = start_x + i * \
-                (end_x - start_x) // (len(word) -
-                                      1) if start_x != end_x else start_x
-            y_pos = start_y + i * \
-                (end_y - start_y) // (len(word) -
-                                      1) if start_y != end_y else start_y
-            # Highlight the word with a unique color
-            draw.text(
-                (padding + x_pos * cell_size + cell_size // 2,
-                 padding + y_pos * cell_size + cell_size // 2),
-                word[i].upper(), fill=color, font=font, anchor="mm"
-            )
-
-    # Draw the grid first
-    draw_grid()
-
-    # Assign a unique color to each word and highlight them
-    word_colors = {}
-    for word, (start_x, start_y, end_x, end_y) in word_positions.items():
-        if word not in word_colors:
-            word_colors[word] = tuple(random.randint(0, 255) for _ in range(3))
-        color = word_colors[word]
-        highlight_word(word, start_x, start_y, end_x, end_y, color)
-
-    # Draw the mask (circle or rectangle)
-    if mask_type == "circle":
-        # Draw circle mask around the grid
-        grid_center_x = padding + grid_size * cell_size // 2
-        grid_center_y = padding + grid_size * cell_size // 2
-        radius = grid_size * cell_size // 2 + 10  # Slightly larger radius
-        draw.ellipse(
-            [grid_center_x - radius, grid_center_y - radius,
-                grid_center_x + radius, grid_center_y + radius],
-            outline="red", width=5
-        )
-    else:
-        # Draw rectangular outline mask around the grid
-        draw.rectangle(
-            [padding, padding, padding + grid_size *
-                cell_size, padding + grid_size * cell_size],
-            outline="red", width=5
-        )
-
-    # Save the image
-    solution_image.save(filename)
-
-
 def create_puzzle_svg(filename, grid, wordlist, mask_type=None, page_number=None):
-    """
-    This function generates a puzzle page as an SVG with a grid of letters, an optional circle mask around the grid,
-    a list of hidden words, and a page number. The output is saved as an SVG file.
-    """
-    page_width, page_height = 2480, 3508  # A4 size in pixels at 300 DPI
+    page_width, page_height = 2480, 3508
     margin = 100
     grid_outline_width = 5
     grid_font_size = 30
     title_font_size = 40
     words_font_size = 30
     page_number_font_size = 30
-    vertical_gap = 100  # Gap between grid and word list
-
-    if ".svg" not in filename:
-        filename += ".svg"
-
-    dwg = Drawing(filename, size=(page_width, page_height))
-
-    grid_size = len(grid)
-    cell_size = min((page_width - 2 * margin) // grid_size,
-                    (page_height // 2) // grid_size)
-    grid_width = grid_size * cell_size
-    grid_height = grid_size * cell_size
-
-    words_per_column = (len(wordlist) + 2) // 3
-    # Approximate height of word list and title
-    word_list_height = words_per_column * 40 + 80
-
-    combined_height = grid_height + vertical_gap + word_list_height
-    vertical_offset = (page_height - combined_height) // 2
-
-    grid_start_x = (page_width - grid_width) // 2
-    grid_start_y = vertical_offset
-
-    # Group for grid cells and letters
-    grid_group = Group()
-
-    for row in range(grid_size):
-        for col in range(grid_size):
-            cell_x = grid_start_x + col * cell_size
-            cell_y = grid_start_y + row * cell_size
-            grid_group.add(dwg.rect(insert=(cell_x, cell_y), size=(
-                cell_size, cell_size), fill='none', stroke='black'))
-            char_x = cell_x + cell_size // 2
-            char_y = cell_y + cell_size // 2
-            grid_group.add(dwg.text(grid[row][col].upper(), insert=(char_x, char_y), text_anchor="middle",
-                                    alignment_baseline="central", font_size=grid_font_size, fill='black'))
-
-    dwg.add(grid_group)
-
-    if mask_type == "circle":
-        center_x = grid_start_x + grid_width // 2
-        center_y = grid_start_y + grid_height // 2
-        radius = max(grid_width, grid_height) // 2 + 40
-        dwg.add(dwg.circle(center=(center_x, center_y), r=radius,
-                fill='none', stroke='red', stroke_width=grid_outline_width))
-    else:
-        dwg.add(dwg.rect(insert=(grid_start_x, grid_start_y), size=(
-            grid_width, grid_height), fill='none', stroke='red', stroke_width=grid_outline_width))
-
-    # Add "Hidden Words" title
-    title_y = grid_start_y + grid_height + vertical_gap
-    dwg.add(dwg.text("HIDDEN WORDS", insert=(page_width // 2, title_y), text_anchor="middle",
-                     alignment_baseline="central", font_size=title_font_size, fill='black'))
-
-    # Add word list
-    words_y = title_y + 80
-    column_width = (page_width - 2 * margin) // 3
-    for i, word in enumerate(sorted(wordlist)):
-        col = i % 3
-        row = i // 3
-        word_x = margin + col * column_width + column_width // 2
-        word_y = words_y + row * 40  # Position each word
-        dwg.add(dwg.text(word.upper(), insert=(word_x, word_y), text_anchor="middle",
-                         alignment_baseline="central", font_size=words_font_size, fill='black'))
-
-    # Add page number
-    if page_number is not None:
-        dwg.add(dwg.text(str(page_number), insert=(page_width // 2, page_height - 100), text_anchor="middle",
-                         alignment_baseline="central", font_size=page_number_font_size, fill='black'))
-
-    # Save the SVG file
-    dwg.save()
-'''
-
-
-def create_puzzle_svg(filename, grid, wordlist, mask_type=None, page_number=None):
-    """
-    This function generates a puzzle page as an SVG with a grid of letters, an optional circle mask around the grid,
-    a list of hidden words, and a page number. The output is saved as an SVG file.
-    """
-    page_width, page_height = 2480, 3508  # A4 size in pixels at 300 DPI
-    margin = 100
-    grid_outline_width = 5
-    grid_font_size = 30
-    title_font_size = 40
-    words_font_size = 30
-    page_number_font_size = 30
-    vertical_gap = 100  # Gap between grid and word list
+    vertical_gap = 100
 
     if ".svg" not in filename:
         filename += ".svg"
@@ -570,17 +167,14 @@ def create_solution_svg(filename, grid, word_positions, mask_type=None):
                 char = grid[y][x]
                 cell_x = start_x + x * cell_size
                 cell_y = start_y + y * cell_size
-                # Draw gridlines only if it's not a circular mask
                 if mask_type != "circle":
                     dwg.add(dwg.rect(insert=(cell_x, cell_y), size=(
                         cell_size, cell_size), fill='none', stroke='black'))
-                # Draw the character inside the grid
                 char_x = cell_x + cell_size // 2
                 char_y = cell_y + cell_size // 2
                 dwg.add(dwg.text(char.upper(), insert=(char_x, char_y), text_anchor="middle",
                                  alignment_baseline="central", font_size=24, fill='black'))
 
-    # Draw the grid (with characters) without gridlines for circle mask
     draw_grid()
 
     def highlight_word(word, start_x, start_y, end_x, end_y, color):
@@ -593,7 +187,6 @@ def create_solution_svg(filename, grid, word_positions, mask_type=None):
                                       1) if start_y != end_y else start_y
             cell_x = padding + x_pos * cell_size
             cell_y = padding + y_pos * cell_size
-            # Draw a colored rectangle to highlight the cell
             dwg.add(dwg.rect(insert=(cell_x, cell_y), size=(
                 cell_size, cell_size), fill=rgb(*color), stroke='none'))
 
@@ -604,7 +197,6 @@ def create_solution_svg(filename, grid, word_positions, mask_type=None):
         color = word_colors[word]
         highlight_word(word, start_x, start_y, end_x, end_y, color)
 
-    # After highlighting, draw the letters on top of the highlights
     for word, (start_x, start_y, end_x, end_y) in word_positions.items():
         color = word_colors[word]
         for i in range(len(word)):
@@ -616,14 +208,13 @@ def create_solution_svg(filename, grid, word_positions, mask_type=None):
                                       1) if start_y != end_y else start_y
             char_x = padding + x_pos * cell_size + cell_size // 2
             char_y = padding + y_pos * cell_size + cell_size // 2
-            # Draw the text on top of the highlighted cell
             dwg.add(dwg.text(word[i].upper(), insert=(char_x, char_y), text_anchor="middle",
                              alignment_baseline="central", font_size=24, fill='black'))
 
     if mask_type == "circle":
         grid_center_x = padding + grid_size * cell_size // 2
         grid_center_y = padding + grid_size * cell_size // 2
-        radius = grid_size * cell_size // 2 + 20  # Increased radius by 10
+        radius = grid_size * cell_size // 2 + 20
         dwg.add(dwg.circle(center=(grid_center_x, grid_center_y),
                 r=radius, fill='none', stroke='red', stroke_width=5))
     else:
@@ -635,30 +226,32 @@ def create_solution_svg(filename, grid, word_positions, mask_type=None):
 
 def create_puzzle_and_solution(puzzle_filename, wordlist, nrows: int, ncols: int, mask_type=None, background_image=None, page_number=None):
     """
-    This function generates both the puzzle image and the solution image.
-    It uses the provided word list, grid dimensions, and mask type to generate both images.
+    Generates puzzle and solution SVG using the Rust-based core.
     """
-    # Generate the word search grid and word positions
-    grid, word_positions = generate_wordsearch(
-        nrows, ncols, wordlist, mask=mask_type)
+    print(f"Generating puzzle (Rust): {puzzle_filename} ({nrows}x{ncols})")  # Debug info
 
-    if grid:
-        # Display the grid for debugging (optional)
-        # display_grid_text(grid)
+    # Call the Rust function
+    result = wordgrid_solver.generate_word_grid_rust(
+        nrows=nrows,
+        ncols=ncols,
+        word_list=wordlist,
+        allow_backwards=True,
+        mask=mask_type
+    )
 
-        # Generate the puzzle image
-        create_puzzle_svg(puzzle_filename,  grid,
+    if result is not None:
+        grid, word_positions = result
+        create_puzzle_svg(puzzle_filename, grid,
                           wordlist, mask_type, page_number)
 
-        # Generate the solution image
         solution_filename = f"{puzzle_filename}S"
         create_solution_svg(solution_filename, grid, word_positions, mask_type)
 
-        print(f"Puzzle and solution generated: {
-              puzzle_filename}.svg, {solution_filename}.svg")
+        print(f"Successfully generated: {puzzle_filename}.svg, {solution_filename}.svg")
+        return True
     else:
-        print("Failed to generate word search after multiple attempts.")
-        return puzzle_filename
+        print(f"Failed to generate word search for {puzzle_filename} (Rust solver).")
+        return False
 
 
 def create_all_puzzles(word_json_path, background_image, puzzle_folder, start_puzzle=1):
@@ -681,8 +274,7 @@ def create_all_puzzles(word_json_path, background_image, puzzle_folder, start_pu
 
             if mode_data:
                 if current_topic != topic_name or current_mode != mode:
-                    transition_filename = f"{
-                        puzzle_folder}/{current_puzzle}. {topic_index}{mode[0]}"
+                    transition_filename = f"{puzzle_folder}/{current_puzzle}.{topic_index}{mode[0]}"
                     create_transition_svg(
                         transition_filename + ".svg", topic_name, mode, background_image)
                     current_puzzle += 1
@@ -696,14 +288,13 @@ def create_all_puzzles(word_json_path, background_image, puzzle_folder, start_pu
 
                 word_list = [word.upper() for word in word_list]
                 page_number = f"{topic_index}{mode[0]}{puzzle_number}"
-                puzzle_filename = f"{
-                    puzzle_folder}/{current_puzzle}. {page_number}"
+                puzzle_filename = f"{puzzle_folder}/{current_puzzle}. {page_number}"
                 size = 13 if "Normal" in mode else 17
 
                 puzzle = create_puzzle_and_solution(
                     puzzle_filename, word_list, size, size, mask_type=None, background_image=background_image, page_number=page_number
                 )
-                current_puzzle += 1  # Update progress
+                current_puzzle += 1
                 if puzzle is not None:
                     fails.append(page_number)
 
@@ -712,8 +303,7 @@ def create_all_puzzles(word_json_path, background_image, puzzle_folder, start_pu
 
             if bonus_data:
                 if current_topic != topic_name or current_mode != f"Bonus {bonus_mode}":
-                    transition_filename = f"{
-                        puzzle_folder}/{current_puzzle}. {topic_index}B{bonus_mode[0]}"
+                    transition_filename = f"{puzzle_folder}/{current_puzzle}. {topic_index}B{bonus_mode[0]}"
                     create_transition_svg(
                         transition_filename + ".svg", topic_name, f"Bonus {bonus_mode}", background_image)
                     current_puzzle += 1
@@ -727,18 +317,16 @@ def create_all_puzzles(word_json_path, background_image, puzzle_folder, start_pu
 
                 word_list = [word.upper() for word in word_list]
                 page_number = f"{topic_index}B{bonus_mode[0]}{puzzle_number}"
-                puzzle_filename = f"{
-                    puzzle_folder}/{current_puzzle}. {page_number}"
+                puzzle_filename = f"{puzzle_folder}/{current_puzzle}. {page_number}"
                 size = 13 if "Normal" in mode else 17
 
                 puzzle = create_puzzle_and_solution(
                     puzzle_filename, word_list, size, size, mask_type="circle", background_image=background_image, page_number=page_number
                 )
-                current_puzzle += 1  # Update progress
+                current_puzzle += 1
                 if puzzle is not None:
                     fails.append(page_number)
 
-    # Make solution page
     create_transition_svg(f"{puzzle_folder}//S.svg",
                           "SOLUTIONS", "", background_image)
 
@@ -750,22 +338,19 @@ def create_all_puzzles(word_json_path, background_image, puzzle_folder, start_pu
 
 
 def create_transition_svg(filename, topic_name, mode_name, background_image=None):
-    dwg = Drawing(filename, size=(2480, 3508))  # A4 size at 300 DPI
+    dwg = Drawing(filename, size=(2480, 3508))
 
     if background_image:
         dwg.add(dwg.image(background_image, insert=(
             0, 0), size=("2480px", "3508px")))
 
-    # Use Courier New for the topic name
     topic_font_size = 120
     dwg.add(dwg.text(topic_name, insert=("50%", "33%"), text_anchor="middle",
             font_size=topic_font_size, font_family="Courier New", font_weight="bold"))
 
-    # Adjust mode name for Bonus modes
     mode_name = mode_name.replace(
         "Bonus Normal", "Bonus I").replace("Bonus Hard", "Bonus II")
 
-    # Use Times New Roman for the mode name
     mode_font_size = 80
     dwg.add(dwg.text(mode_name, insert=("50%", "75%"), text_anchor="middle",
             font_size=mode_font_size, font_family="Times New Roman", font_weight="bold"))
@@ -777,11 +362,9 @@ def create_individual_puzzle(files, word_json_path, puzzle_folder, background_im
     with open(word_json_path, "r") as file:
         words_data = json.load(file)
 
-    # puzzle_folder = "generated_puzzles"
     os.makedirs(puzzle_folder, exist_ok=True)
 
     for file in files:
-        # file = 5BH1
         try:
             page_number = file
             topic_index = int(file[0])
@@ -813,25 +396,26 @@ def create_individual_puzzle(files, word_json_path, puzzle_folder, background_im
 def main():
     wordlist_filename = "test_words.txt"
     nrows, ncols = 15, 15
-    mask_type = None  # None, 'circle', 'squares'
+    mask_type = None
 
     if nrows > NMAX or ncols > NMAX:
         sys.exit(f"Maximum grid size is {NMAX}x{NMAX}")
 
     wordlist = [line.strip().upper() for line in open(
         wordlist_filename) if line.strip() and not line.startswith('#')]
-    grid, wordPositions = generate_wordsearch(
-        nrows, ncols, wordlist, mask=mask_type)
+    output_dir = "output"
+    os.makedirs(output_dir, exist_ok=True)
+    base_filename = os.path.splitext(wordlist_filename)[0]
+    puzzle_file = os.path.join(output_dir, f"{base_filename}-puzzle-rust")
 
-    if grid:
-        display_grid_text(grid)
-        base_filename = os.path.splitext(wordlist_filename)[0]
-        create_puzzle_svg(f"{base_filename}-puzzle.png",
-                          grid, wordlist, mask_type, 21)
-        create_solution_svg(f"{base_filename}-solution.png",
-                            grid, wordPositions, mask_type)
+    success = create_puzzle_and_solution(
+        puzzle_file, wordlist, nrows, ncols, mask_type=mask_type
+    )
+
+    if success:
+        print("SVG puzzle and solution generated successfully (Rust).")
     else:
-        print("Failed to generate word search after multiple attempts.")
+        print("Failed to generate word search grid (Rust).")
 
 
 if __name__ == "__main__":

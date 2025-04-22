@@ -6,6 +6,7 @@ svgwrite==1.4.3
 fastapi==0.104.1
 uvicorn==0.23.2
 python-multipart==0.0.6
+numba
 svgwrite==1.4.3
 pytest
 httpx
